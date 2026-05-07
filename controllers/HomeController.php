@@ -1,0 +1,130 @@
+<?php
+/*
+ * app/controllers/HomeController.php
+ * ------------------------------------
+ * Handles the homepage, role-based dashboard routing,
+ * and the notifications listing page.
+ */
+
+require_once __DIR__ . '/../models/Book.php';
+require_once __DIR__ . '/../models/Notification.php';
+require_once __DIR__ . '/../models/Club.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/Event.php';
+require_once __DIR__ . '/../models/Store.php';
+require_once __DIR__ . '/../models/User.php';
+
+class HomeController extends Controller
+{
+    public function index(): void
+    {
+        $bookModel  = new Book();
+        $staffPicks = $bookModel->getStaffPicks();
+        $allBooks   = array_slice($bookModel->getAll(), 0, 8); // Latest 8
+
+        $this->view('home/index', [
+            'staffPicks' => $staffPicks,
+            'allBooks'   => $allBooks,
+        ]);
+    }
+
+    public function dashboard(): void
+    {
+        requireLogin();
+        $role   = currentRole();
+        $userId = currentUserId();
+
+        $data = ['role' => $role];
+
+        switch ($role) {
+            case 'READER':
+                // ❌ تم حذف متغيرات الـ Challenge والـ Badge من هنا
+                $bookModel    = new Book();
+                $notifModel   = new Notification();
+                $userModel    = new User();
+
+                $data['staffPicks']    = $bookModel->getStaffPicks();
+                $data['notifications'] = $notifModel->getByUser($userId);
+                
+                // 🛠️ جلب بيانات الـ Quick Lend 
+                $allUsers = $userModel->getAll();
+                
+                // 1. استبعاد المستخدم الحالي + فلترة عشان نجيب الـ READER بس
+                $data['usersList'] = array_filter($allUsers, function($u) use ($userId) {
+                    return $u['id'] != $userId && strtoupper($u['role']) === 'READER';
+                });
+                
+                // 2. جلب الكتب اللي اليوزر اشتراها عشان يقدر يعيرها (تأكدي إن الدالة دي في موديل Book)
+                if (method_exists($bookModel, 'getPurchasedByUser')) {
+                    $data['booksList'] = $bookModel->getPurchasedByUser($userId);
+                } else {
+                    $data['booksList'] = $bookModel->getAll(); // بديل مؤقت لو الدالة مش موجودة
+                }
+                break;
+
+            case 'BOOKSTORE_OWNER':
+                $storeModel  = new Store();
+                $orderModel  = new Order();
+                $bookModel   = new Book();
+                require_once __DIR__ . '/../models/PayoutLedger.php';
+                $ledgerModel = new PayoutLedger();
+
+                $store   = $storeModel->getByOwner($userId);
+                $storeId = $store ? $store['id'] : 0;
+
+                $data['store']       = $store;
+                $data['orders']      = $storeId ? $orderModel->getByStore($storeId) : [];
+                $data['books']       = $storeId ? $bookModel->getByStore($storeId)  : [];
+                $data['pendingPayout'] = $storeId ? $ledgerModel->getPendingTotal($storeId) : 0;
+                $data['payouts']     = $storeId ? $ledgerModel->getByStore($storeId) : [];
+                break;
+
+            case 'CLUB_ORGANIZER':
+                $clubModel = new Club();
+                $data['clubs'] = $clubModel->getByOrganizer($userId);
+                break;
+
+            case 'AUTHOR':
+                $eventModel = new Event();
+                require_once __DIR__ . '/../models/Notification.php';
+                $data['events']        = $eventModel->getByOrganizer($userId);
+                $data['notifications'] = (new Notification())->getByUser($userId);
+                break;
+
+            case 'SYSTEM_ADMIN':
+                $data['userCount']   = (new User())->count();
+                $data['bookCount']   = (new Book())->count();
+                $data['orderCount']  = (new Order())->count();
+                $data['clubCount']   = (new Club())->count();
+                $data['eventCount']  = (new Event())->count();
+                $data['storeCount']  = (new Store())->count();
+                require_once __DIR__ . '/../models/Dispute.php';
+                require_once __DIR__ . '/../models/StoreApplication.php';
+                $data['openDisputes']      = (new Dispute())->getOpen();
+                $data['pendingStores']     = (new StoreApplication())->getPending();
+                break;
+        }
+
+        $viewMap = [
+            'READER'          => 'dashboards/reader',
+            'BOOKSTORE_OWNER' => 'dashboards/owner',
+            'CLUB_ORGANIZER'  => 'dashboards/organizer',
+            'AUTHOR'          => 'dashboards/author',
+            'SYSTEM_ADMIN'    => 'dashboards/admin',
+        ];
+
+        $view = $viewMap[$role] ?? 'dashboards/reader';
+        $this->view($view, $data);
+    }
+
+    public function notifications(): void
+    {
+        requireLogin();
+        $notifModel    = new Notification();
+        $notifications = $notifModel->getByUser(currentUserId());
+
+        $notifModel->markAllRead(currentUserId());
+
+        $this->view('notifications/index', ['notifications' => $notifications]);
+    }
+}
