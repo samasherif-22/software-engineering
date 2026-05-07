@@ -19,11 +19,11 @@ class HomeController extends Controller
     public function index(): void
     {
         $bookModel  = new Book();
-        $staffPicks = $bookModel->getStaffPicks();
+        // ✅ تم حذف سطر استدعاء $staffPicks
         $allBooks   = array_slice($bookModel->getAll(), 0, 8); // Latest 8
 
         $this->view('home/index', [
-            'staffPicks' => $staffPicks,
+            // ✅ تم حذف 'staffPicks' من المصفوفة المُرسلة للـ View
             'allBooks'   => $allBooks,
         ]);
     }
@@ -38,12 +38,11 @@ class HomeController extends Controller
 
         switch ($role) {
             case 'READER':
-                // ❌ تم حذف متغيرات الـ Challenge والـ Badge من هنا
                 $bookModel    = new Book();
                 $notifModel   = new Notification();
                 $userModel    = new User();
 
-                $data['staffPicks']    = $bookModel->getStaffPicks();
+                // ✅ تم حذف السطر الخاص بـ $data['staffPicks'] لأن الدالة تم إلغاؤها
                 $data['notifications'] = $notifModel->getByUser($userId);
                 
                 // 🛠️ جلب بيانات الـ Quick Lend 
@@ -54,11 +53,11 @@ class HomeController extends Controller
                     return $u['id'] != $userId && strtoupper($u['role']) === 'READER';
                 });
                 
-                // 2. جلب الكتب اللي اليوزر اشتراها عشان يقدر يعيرها (تأكدي إن الدالة دي في موديل Book)
+                // 2. جلب الكتب اللي اليوزر اشتراها عشان يقدر يعيرها
                 if (method_exists($bookModel, 'getPurchasedByUser')) {
                     $data['booksList'] = $bookModel->getPurchasedByUser($userId);
                 } else {
-                    $data['booksList'] = $bookModel->getAll(); // بديل مؤقت لو الدالة مش موجودة
+                    $data['booksList'] = $bookModel->getAll(); // بديل مؤقت
                 }
                 break;
 
