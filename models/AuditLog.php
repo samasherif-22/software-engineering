@@ -1,11 +1,4 @@
 <?php
-/*
- * app/models/AuditLog.php
- * ------------------------
- * Reads from the audit_logs table (F41 — System Audit Trail).
- * Writes are done by the logAction() helper function in functions.php.
- * This model is only used for reading logs in the Admin panel.
- */
 
 class AuditLog
 {
@@ -13,7 +6,7 @@ class AuditLog
 
     public function __construct()
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = Database::getInstance()->getConnection(); //SINGLETON design pattern
     }
 
 
