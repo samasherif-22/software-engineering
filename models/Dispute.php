@@ -1,10 +1,4 @@
 <?php
-/*
- * app/models/Dispute.php
- * -----------------------
- * Handles order/transaction disputes submitted by readers or store owners.
- * Admin can review and resolve disputes.
- */
 
 class Dispute
 {
@@ -15,6 +9,7 @@ class Dispute
         $this->db = Database::getInstance()->getConnection();
     }
 
+     // Get all open disputes with reporter name
     public function getOpen(): array
     {
         $stmt = $this->db->prepare(
@@ -35,12 +30,12 @@ class Dispute
         return $stmt->execute($data);
     }
 
-    // دي الدالة اللي كانت ناقصة واللي بتعمل Update في الداتابيز
+   
     public function resolve(int $id, string $resolution): bool
     {
         $stmt = $this->db->prepare(
             "UPDATE disputes SET status = 'resolved', resolution = :res WHERE id = :id"
         );
-        return $stmt->execute([':res' => $resolution, ':id' => $id]);
+        return $stmt->execute([':res' => $resolution, ':id' => $id]); // Update dispute status
     }
 }
