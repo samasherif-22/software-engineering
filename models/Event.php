@@ -1,11 +1,4 @@
 <?php
-/*
- * app/models/Event.php
- * ---------------------
- * Handles all database operations for the 'events' table.
- * Events are created by authors and can be virtual (with a stream URL)
- * or physical (with a city and venue).
- */
 
 class Event
 {
@@ -16,9 +9,7 @@ class Event
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * جلب كافة الفعاليات، مع ترتيبها حسب التاريخ (الأقرب أولاً).
-     */
+    
     public function getAll(): array
     {
         $stmt = $this->db->prepare(
@@ -30,10 +21,6 @@ class Event
         return $stmt->fetchAll();
     }
 
-    /**
-     * جلب بيانات فعالية معينة بواسطة المعرف (ID).
-     * 🛠️ تم تعديل حساب tickets_sold ليقتصر على الحجوزات المؤكدة فقط.
-     */
     public function getById(int $id)
     {
         $stmt = $this->db->prepare(
@@ -46,9 +33,7 @@ class Event
         return $stmt->fetch();
     }
 
-    /**
-     * جلب كافة الفعاليات التي أنشأها منظم معين.
-     */
+
     public function getByOrganizer(int $organizerId): array
     {
         $stmt = $this->db->prepare(
@@ -58,9 +43,7 @@ class Event
         return $stmt->fetchAll();
     }
 
-    /**
-     * إنشاء فعالية جديدة في قاعدة البيانات.
-     */
+
     public function create(array $data): int
     {
         $stmt = $this->db->prepare(
@@ -72,18 +55,14 @@ class Event
         return (int)$this->db->lastInsertId();
     }
 
-    /**
-     * تحديث حالة الفعالية (مثل: upcoming, live, ended).
-     */
+
     public function updateEventStatus(int $id, string $status): bool
     {
         $stmt = $this->db->prepare("UPDATE events SET status = :status WHERE id = :id");
         return $stmt->execute([':status' => $status, ':id' => $id]);
     }
 
-    /**
-     * الحصول على إجمالي عدد الفعاليات المسجلة.
-     */
+   
     public function count(): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM events");
