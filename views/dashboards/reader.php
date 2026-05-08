@@ -9,13 +9,11 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
 ?>
 
 <div class="container py-4">
-  <!-- الترحيب بالمستخدم -->
   <h1 class="section-title mb-1">Hello, <?= sanitize($_SESSION['name'] ?? 'Reader') ?>!</h1>
   <p class="text-muted mb-4">Here's your reading hub for today.</p>
 
   <div class="row g-4">
 
-    <!-- ── Quick Actions (الروابط السريعة مع تعديل رابط My Clubs) ── -->
     <div class="col-12">
       <div class="card border-0 shadow-sm p-4">
         <h5 class="fw-bold mb-3"><i class="bi bi-lightning me-2 text-accent"></i>Quick Links</h5>
@@ -31,7 +29,6 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
               </a>
             </div>
             <div class="col-md-3">
-              <!-- التعديل هنا: يوجه الآن لـ My Clubs المشترك فيها اليوزر فقط -->
               <a href="<?= BASE_URL ?>index.php?page=clubs&action=myClubs" class="btn btn-outline-primary btn-sm w-100">
                 <i class="bi bi-people me-2"></i>My Clubs
               </a>
@@ -41,17 +38,12 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
                 <i class="bi bi-calendar-event me-2"></i>Events
               </a>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <a href="<?= BASE_URL ?>index.php?page=loans" class="btn btn-outline-secondary btn-sm w-100">
                 <i class="bi bi-arrow-left-right me-2"></i>Lending Library
               </a>
             </div>
-            <div class="col-md-4">
-              <a href="<?= BASE_URL ?>index.php?page=circles" class="btn btn-outline-secondary btn-sm w-100">
-                <i class="bi bi-circle me-2"></i>Interest Circles
-              </a>
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <a href="<?= BASE_URL ?>index.php?page=settings" class="btn btn-outline-secondary btn-sm w-100">
                 <i class="bi bi-shield-lock me-2"></i>Privacy Settings
               </a>
@@ -60,7 +52,6 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
       </div>
     </div>
 
-    <!-- ── Quick Lend (إعارة كتاب لصديق) ── -->
     <div class="col-12">
       <div class="card border-0 shadow-sm p-4 border-start border-4 border-info">
         <h5 class="fw-bold mb-3"><i class="bi bi-bookmark-heart me-2 text-info"></i>Quick Lend a Book</h5>
@@ -69,17 +60,22 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
             <label class="form-label small fw-semibold text-muted mb-1">Select Member</label>
             <select name="borrower_id" class="form-select form-select-sm" required>
               <option value="" disabled selected>Who are you lending to?</option>
-              <option value="2">Sama</option>
-              <option value="3">Nagham</option>
-              <option value="4">Rana</option>
+              <?php if (!empty($usersList)): ?>
+                <?php foreach ($usersList as $user): ?>
+                  <option value="<?= $user['id'] ?>"><?= sanitize($user['name']) ?></option>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </select>
           </div>
           <div class="col-md-4">
             <label class="form-label small fw-semibold text-muted mb-1">Select Your Book</label>
             <select name="book_id" class="form-select form-select-sm" required>
               <option value="" disabled selected>Which book are you lending?</option>
-              <option value="101">Shatter Me</option>
-              <option value="102">The Alchemist</option>
+              <?php if (!empty($booksList)): ?>
+                <?php foreach ($booksList as $book): ?>
+                  <option value="<?= $book['id'] ?>"><?= sanitize($book['title']) ?></option>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </select>
           </div>
           <div class="col-md-2">
@@ -95,7 +91,6 @@ require_once BASE_PATH . '/app/views/partials/navbar.php';
       </div>
     </div>
 
-    <!-- ── Recent Notifications (الإشعارات الأخيرة) ── -->
     <?php if (!empty($notifications)): ?>
     <div class="col-12">
       <div class="card border-0 shadow-sm">
