@@ -2,7 +2,8 @@
 /*
  * app/controllers/ClubController.php
  * ------------------------------------
- * Handles all book club operations.
+ * Handles all book club operations including membership, 
+ * discussions, goals, and peer-to-peer lending.
  */
 
 require_once __DIR__ . '/../models/Club.php';
@@ -11,7 +12,6 @@ require_once __DIR__ . '/../models/Discussion.php';
 require_once __DIR__ . '/../models/Nomination.php';
 require_once __DIR__ . '/../models/Vote.php';
 require_once __DIR__ . '/../models/Loan.php';
-require_once __DIR__ . '/../models/Circle.php';
 require_once __DIR__ . '/../models/Notification.php';
 
 class ClubController extends Controller
@@ -25,28 +25,32 @@ class ClubController extends Controller
         $this->notifModel = new Notification();
     }
 
-    // ── index() ─────────────────────────────────────────────────────────────
+    /**
+     * Display all public book clubs
+     */
     public function index(): void {
-        // دي الصفحة العامة اللي بتعرض كل النوادي عشان الناس تنضم ليها
         $clubs = $this->clubModel->getAll(); 
         $this->view('clubs/index', ['clubs' => $clubs, 'title' => 'Explore Book Clubs']);
     }
 
+    /**
+     * Display clubs joined by the current user
+     */
     public function myClubs(): void {
         requireLogin();
         $userId = currentUserId();
         
-        // دي الدالة اللي بتجيب اللي أنا مشترك فيه بس
         $clubs = $this->clubModel->getJoinedClubs($userId); 
         
-        // هنستخدم نفس الفيو بس ببيانات متفلترة
         $this->view('clubs/index', [
             'clubs' => $clubs, 
             'title' => 'My Joined Clubs'
         ]);
     }
 
-    // ── show() ──────────────────────────────────────────────────────────────
+    /**
+     * Display single club details, goals, and library
+     */
     public function show(): void
     {
         requireLogin();
@@ -74,6 +78,8 @@ class ClubController extends Controller
         }
 
         $db = Database::getInstance()->getConnection();
+        
+        // Fetch Q&A section data
         $stmt = $db->prepare("
             SELECT q.question, a.answer, u.name as asker_name, auth.name as author_name
             FROM qa_questions q
@@ -86,7 +92,7 @@ class ClubController extends Controller
         $stmt->execute([':cid' => $clubId]);
         $qaList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // ── جلب مكتبة النادي (الكتب المملوكة لأعضاء آخرين في هذا النادي) ──
+        // Fetch Club Library (Books owned by other members)
         $stmtLib = $db->prepare("
             SELECT DISTINCT b.id as book_id, b.title, u.id as owner_id, u.name as owner_name
             FROM club_members cm
@@ -99,13 +105,11 @@ class ClubController extends Controller
         $stmtLib->execute([':cid' => $clubId, ':uid' => currentUserId()]);
         $clubLibrary = $stmtLib->fetchAll(PDO::FETCH_ASSOC);
 
-        // ── تمرير متغير $clubLibrary للـ View ──
         $this->view('clubs/show', compact(
             'club', 'goals', 'discussions', 'nominations', 'members', 'isMember', 'qaList', 'clubLibrary'
         ));
     }
 
-    // ── create() / store() ───────────────────────────────────────────────────
     public function create(): void
     {
         requireRole(['CLUB_ORGANIZER', 'SYSTEM_ADMIN']);
@@ -117,7 +121,7 @@ class ClubController extends Controller
         requireRole(['CLUB_ORGANIZER', 'SYSTEM_ADMIN']);
         $this->clubModel->create([
             ':organizer_id' => currentUserId(),
-            ':name'         => trim($_POST['name']        ?? ''),
+            ':name'         => trim($_POST['name']         ?? ''),
             ':description'  => trim($_POST['description'] ?? ''),
             ':genre'        => trim($_POST['genre']       ?? ''),
             ':is_private'   => isset($_POST['is_private']) ? 1 : 0,
@@ -129,7 +133,9 @@ class ClubController extends Controller
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 
-    // ── joinClub() ───────────────────────────────────────────────────────────
+    /**
+     * Handle public join or private join request
+     */
     public function joinClub(): void
     {
         requireLogin();
@@ -145,14 +151,10 @@ class ClubController extends Controller
 
         if ($club['is_private']) {
             $db = Database::getInstance()->getConnection();
-            
             $this->clubModel->deleteJoinRequest($clubId, $userId);
 
             try {
-                $stmt = $db->prepare(
-                    "INSERT INTO join_requests (club_id, user_id, status)
-                     VALUES (:cid, :uid, 'pending')"
-                );
+                $stmt = $db->prepare("INSERT INTO join_requests (club_id, user_id, status) VALUES (:cid, :uid, 'pending')");
                 $stmt->execute([':cid' => $clubId, ':uid' => $userId]);
 
                 $this->notifModel->create(
@@ -162,7 +164,7 @@ class ClubController extends Controller
                 );
                 setFlash('info', 'Join request sent. Waiting for organizer approval.');
             } catch (PDOException $e) {
-                setFlash('warning', 'You already have a pending request for this club.');
+                setFlash('warning', 'You already have a pending request.');
             }
         } else {
             if ($this->clubModel->addMember($clubId, $userId)) {
@@ -171,11 +173,9 @@ class ClubController extends Controller
                 setFlash('info', 'You are already a member.');
             }
         }
-
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 
-    // ── requests() / approveRequest() ────────────────────────────────────────
     public function requests(): void
     {
         requireRole(['CLUB_ORGANIZER', 'SYSTEM_ADMIN']);
@@ -208,13 +208,12 @@ class ClubController extends Controller
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=requests&id=' . $clubId);
     }
 
-    // ── createGoal() / updateProgress() ──────────────────────────────────────
     public function createGoal(): void
     {
         requireRole(['CLUB_ORGANIZER', 'SYSTEM_ADMIN']);
-        $clubId  = (int)($_POST['club_id']        ?? 0);
+        $clubId  = (int)($_POST['club_id']         ?? 0);
         $chapter = (int)($_POST['target_chapter'] ?? 1);
-        $dueDate =       $_POST['due_date']        ?? '';
+        $dueDate =       $_POST['due_date']         ?? '';
         $label   = trim($_POST['label']           ?? '');
 
         $goalModel = new ReadingGoal();
@@ -233,7 +232,7 @@ class ClubController extends Controller
     public function updateProgress(): void
     {
         requireLogin();
-        $goalId  = (int)($_POST['goal_id']        ?? 0);
+        $goalId  = (int)($_POST['goal_id']         ?? 0);
         $chapter = (int)($_POST['current_chapter'] ?? 0);
         $userId  = currentUserId();
 
@@ -245,7 +244,6 @@ class ClubController extends Controller
         $this->redirect($referer);
     }
 
-    // ── createDiscussion() ────────────────────────────────────────────────────
     public function createDiscussion(): void
     {
         requireLogin();
@@ -256,53 +254,37 @@ class ClubController extends Controller
         $userId = currentUserId();
 
         if (empty($title) || empty($body)) {
-            setFlash('danger', 'Discussion title and body are required.');
+            setFlash('danger', 'Title and body are required.');
             $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
             return;
         }
 
         $db = Database::getInstance()->getConnection();
-        
-        $stmt = $db->prepare(
-            "INSERT INTO discussions (club_id, author_id, title, body, required_chapter)
-             VALUES (:cid, :uid, :title, :body, :req_chap)"
-        );
-        
-        $stmt->execute([
-            ':cid' => $clubId,
-            ':uid' => $userId, 
-            ':title' => $title,
-            ':body' => $body,
-            ':req_chap' => $requiredChapter
-        ]);
+        $stmt = $db->prepare("INSERT INTO discussions (club_id, author_id, title, body, required_chapter) VALUES (:cid, :uid, :title, :body, :req_chap)");
+        $stmt->execute([':cid' => $clubId, ':uid' => $userId, ':title' => $title, ':body' => $body, ':req_chap' => $requiredChapter]);
 
         setFlash('success', 'Discussion posted successfully!');
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 
-    // ── canAccessDiscussion() ─────────────────────────────────────────────────
     private function canAccessDiscussion(array $discussion, int $userId): bool
     {
         if ((int)$discussion['required_chapter'] === 0) return true;
-
         $goalModel = new ReadingGoal();
         $myChapter = $goalModel->getUserMaxChapter($discussion['club_id'], $userId);
         return $myChapter >= (int)$discussion['required_chapter'];
     }
 
-    // ── nominate() / castVote() ───────────────────────────────────────────────
     public function nominate(): void
     {
         requireLogin();
         $clubId    = (int)($_POST['club_id']    ?? 0);
         $bookTitle = trim($_POST['book_title'] ?? '');
-
         if (empty($bookTitle)) {
             setFlash('danger', 'Please enter a book title.');
             $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
             return;
         }
-
         (new Nomination())->create($clubId, currentUserId(), $bookTitle);
         setFlash('success', 'Nomination submitted!');
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
@@ -313,18 +295,15 @@ class ClubController extends Controller
         requireLogin();
         $nominationId = (int)($_POST['nomination_id'] ?? 0);
         $clubId       = (int)($_POST['club_id']       ?? 0);
-
         try {
             (new Nomination())->castVote($nominationId, currentUserId());
             setFlash('success', 'Vote cast!');
         } catch (PDOException $e) {
-            setFlash('warning', 'You have already voted for this nomination.');
+            setFlash('warning', 'You have already voted.');
         }
-
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 
-    // ── lendBook() / returnBook() ─────────────────────────────────────────────
     public function lendBook(): void
     {
         requireLogin();
@@ -334,23 +313,12 @@ class ClubController extends Controller
         $lenderId   = currentUserId();
 
         $loanModel = new Loan();
-        $loanId    = $loanModel->create([
-            ':lender_id'   => $lenderId,
-            ':borrower_id' => $borrowerId,
-            ':book_id'     => $bookId,
-            ':due_date'    => $dueDate,
-        ]);
+        $loanId    = $loanModel->create([':lender_id' => $lenderId, ':borrower_id' => $borrowerId, ':book_id' => $bookId, ':due_date' => $dueDate]);
 
-        
         $lenderName = sanitize($_SESSION['name'] ?? 'A member');
-        $this->notifModel->create(
-            $borrowerId,
-            "{$lenderName} approved your borrow request! Book is due: {$dueDate}",
-            BASE_URL . 'index.php?page=loans'
-        );
-
+        $this->notifModel->create($borrowerId, "{$lenderName} approved your borrow request!", BASE_URL . 'index.php?page=loans');
         logAction('LEND_BOOK', 'loans', $loanId);
-        setFlash('success', 'Lending request sent to borrower!');
+        setFlash('success', 'Lending request sent!');
         $this->redirect(BASE_URL . 'index.php?page=loans');
     }
 
@@ -364,13 +332,11 @@ class ClubController extends Controller
         $this->redirect(BASE_URL . 'index.php?page=loans');
     }
 
-    // ── Loan index (page=loans) ──────────────────────────────────────────────
     public function loans(): void
     {
         requireLogin();
         $userId = currentUserId();
         $loanModel = new Loan();
-        
         $lent      = $loanModel->getLent($userId);
         $borrowed  = $loanModel->getBorrowed($userId);
 
@@ -380,89 +346,29 @@ class ClubController extends Controller
         $bookModel = new Book();
 
         $allUsers = $userModel->getAll();
-        
         $usersList = array_filter($allUsers, function($u) use ($userId) {
             return $u['id'] != $userId && strtoupper($u['role']) === 'READER'; 
         });
         
-        // لو مفيش الدالة دي هنرجع كل الكتب مؤقتا عشان مفيش error يحصل
-        if (method_exists($bookModel, 'getPurchasedByUser')) {
-            $booksList = $bookModel->getPurchasedByUser($userId);
-        } else {
-            $booksList = $bookModel->getAll();
-        }
+        $booksList = method_exists($bookModel, 'getPurchasedByUser') ? $bookModel->getPurchasedByUser($userId) : $bookModel->getAll();
 
-        $this->view('clubs/loans', [
-            'lent'      => $lent,
-            'borrowed'  => $borrowed,
-            'usersList' => $usersList,
-            'booksList' => $booksList
-        ]);
+        $this->view('clubs/loans', compact('lent', 'borrowed', 'usersList', 'booksList'));
     }
 
-    // ── joinCircle() ─────────────────────────────────────────────────────────
-    public function joinCircle(): void
-    {
-        requireLogin();
-        $tag    = trim($_POST['tag'] ?? '');
-        $userId = currentUserId();
-
-        if (empty($tag)) {
-            setFlash('danger', 'Please enter an interest tag.');
-            $this->redirect(BASE_URL . 'index.php?page=circles');
-            return;
-        }
-
-        $circleModel = new Circle();
-        $circle      = $circleModel->getByTag($tag);
-        $circleId = $circle ? $circle['id'] : $circleModel->create($tag);
-
-        if ($circleModel->addMember($circleId, $userId)) {
-            setFlash('success', "Joined the '{$tag}' circle!");
-        } else {
-            setFlash('info', "You are already in the '{$tag}' circle.");
-        }
-
-        $this->redirect(BASE_URL . 'index.php?page=circles');
-    }
-
-    // ── Circles index (page=circles) ─────────────────────────────────────────
-    public function circles(): void
-    {
-        requireLogin();
-        $circleModel = new Circle();
-        $allCircles  = $circleModel->getAll();
-        $myCircles   = $circleModel->getByUser(currentUserId());
-        $this->view('clubs/circles', compact('allCircles', 'myCircles'));
-    }
-
-    // ── askQuestion() / answerQuestion() ─────────────────────────────────────
     public function askQuestion(): void
     {
         requireRole(['READER']);
         $clubId   = (int)($_POST['club_id']  ?? 0);
         $question = trim($_POST['question'] ?? '');
-        $userId   = currentUserId();
-
         if (empty($question)) {
             setFlash('danger', 'Please enter a question.');
             $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
             return;
         }
-
-        try {
-            $db   = Database::getInstance()->getConnection();
-            $stmt = $db->prepare(
-                "INSERT INTO qa_questions (club_id, user_id, question)
-                 VALUES (:cid, :uid, :q)"
-            );
-            $stmt->execute([':cid' => $clubId, ':uid' => $userId, ':q' => $question]);
-
-            setFlash('success', 'Question submitted. An author will answer soon!');
-        } catch (PDOException $e) {
-            setFlash('danger', 'Database Error: ' . $e->getMessage());
-        }
-
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("INSERT INTO qa_questions (club_id, user_id, question) VALUES (:cid, :uid, :q)");
+        $stmt->execute([':cid' => $clubId, ':uid' => currentUserId(), ':q' => $question]);
+        setFlash('success', 'Question submitted!');
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 
@@ -471,66 +377,29 @@ class ClubController extends Controller
         requireRole(['AUTHOR']);
         $questionId = (int)($_POST['question_id'] ?? 0);
         $answer     = trim($_POST['answer']       ?? '');
-        $authorId   = currentUserId();
-
         if (empty($answer)) {
-            setFlash('danger', 'Please write an answer first.');
-            $referer = $_SERVER['HTTP_REFERER'] ?? (BASE_URL . 'index.php?page=dashboard');
-            $this->redirect($referer);
+            setFlash('danger', 'Please write an answer.');
+            $this->redirect($_SERVER['HTTP_REFERER'] ?? BASE_URL);
             return;
         }
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("INSERT INTO qa_answers (question_id, author_id, answer) VALUES (:qid, :aid, :a)");
+        $stmt->execute([':qid' => $questionId, ':aid' => currentUserId(), ':a' => $answer]);
 
-        try {
-            $db   = Database::getInstance()->getConnection();
-            $stmt = $db->prepare(
-                "INSERT INTO qa_answers (question_id, author_id, answer)
-                 VALUES (:qid, :aid, :a)"
-            );
-            $stmt->execute([':qid' => $questionId, ':aid' => $authorId, ':a' => $answer]);
-
-            $stmt2 = $db->prepare("SELECT user_id, club_id FROM qa_questions WHERE id = :id");
-            $stmt2->execute([':id' => $questionId]);
-            $asker = $stmt2->fetch();
-            
-            if ($asker) {
-                $shortAnswer = mb_strimwidth($answer, 0, 40, '...');
-                $this->notifModel->create(
-                    $asker['user_id'],
-                    "Author replied: {$shortAnswer}",
-                    BASE_URL . "index.php?page=clubs&action=show&id={$asker['club_id']}"
-                );
-            }
-
-            setFlash('success', 'Answer posted successfully!');
-        } catch (PDOException $e) {
-            setFlash('danger', 'Database Error: ' . $e->getMessage());
-        }
-
-        $referer = $_SERVER['HTTP_REFERER'] ?? (BASE_URL . 'index.php?page=dashboard');
-        $this->redirect($referer);
+        setFlash('success', 'Answer posted!');
+        $this->redirect($_SERVER['HTTP_REFERER'] ?? BASE_URL);
     }
 
- // ── requestToBorrow() ─────────────────────────────────────────────────────
     public function requestToBorrow(): void
     {
         requireLogin();
-        requireRole(['READER']); 
-
         $clubId = (int)($_POST['club_id'] ?? 0);
         $ownerId = (int)($_POST['owner_id'] ?? 0);
         $bookId = (int)($_POST['book_id'] ?? 0); 
         $bookTitle = trim($_POST['book_title'] ?? 'a book');
         
-        $myId = currentUserId(); 
-        $myName = sanitize($_SESSION['name'] ?? 'A member');
-
-        $this->notifModel->create(
-            $ownerId,
-            "{$myName} wants to borrow your book '{$bookTitle}'. Click here to approve!",
-            BASE_URL . "index.php?page=loans&prefill_borrower={$myId}&prefill_book={$bookId}"
-        );
-
-        setFlash('success', 'Borrow request sent to the owner!');
+        $this->notifModel->create($ownerId, "Someone wants to borrow '{$bookTitle}'.", BASE_URL . "index.php?page=loans&prefill_borrower=".currentUserId()."&prefill_book={$bookId}");
+        setFlash('success', 'Borrow request sent!');
         $this->redirect(BASE_URL . 'index.php?page=clubs&action=show&id=' . $clubId);
     }
 }
