@@ -1,10 +1,4 @@
 <?php
-/*
- * app/models/Discussion.php
- * --------------------------
- * Handles club discussion threads (F13 — Synchronized Discussion Cycles).
- * A discussion can require a minimum chapter to be read before access is granted.
- */
 
 class Discussion
 {
@@ -15,12 +9,8 @@ class Discussion
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Get all discussion threads for a club.
-     *
-     * @param int $clubId
-     * @return array
-     */
+    
+   // Get all discussion for a club. 
   public function getByClub(int $clubId): array
 {
     $stmt = $this->db->prepare(
@@ -34,12 +24,9 @@ class Discussion
     return $stmt->fetchAll();
 }
 
-    /**
-     * Get a single discussion thread by ID.
-     *
-     * @param int $id
-     * @return array|false
-     */
+    
+     //Get a single discussion by ID.
+   
     public function getById(int $id)
     {
         $stmt = $this->db->prepare(
@@ -51,12 +38,7 @@ class Discussion
         return $stmt->fetch();
     }
 
-    /**
-     * Create a new discussion thread.
-     *
-     * @param array $data  Keys: club_id, user_id, title, body, required_chapter
-     * @return bool
-     */
+     //Create a new discussion thread.
     public function create(array $data): bool
     {
         $stmt = $this->db->prepare(
