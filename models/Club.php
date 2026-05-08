@@ -1,9 +1,4 @@
 <?php
-/*
- * app/models/Club.php
- * --------------------
- * Handles all database operations for the 'clubs' table.
- */
 
 class Club
 {
@@ -14,9 +9,9 @@ class Club
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Get all clubs, with member count and organizer name.
-     */
+    
+    // Get all clubs, with member count and organizer name.
+     
     public function getAll(): array
     {
         $stmt = $this->db->prepare(
@@ -30,9 +25,9 @@ class Club
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Get a single club by ID.
-     */
+    
+     // Get a single club by ID.
+     
     public function getById(int $id)
     {
         $stmt = $this->db->prepare(
@@ -45,9 +40,9 @@ class Club
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Get all clubs organized by a specific user.
-     */
+    
+     // Get all clubs organized by a specific clubOrgnizer.
+     
     public function getByOrganizer(int $organizerId): array
     {
         $stmt = $this->db->prepare(
@@ -61,9 +56,9 @@ class Club
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Check if a user is already a member.
-     */
+    
+     // Check if a user is already a member.
+     
     public function isMember(int $clubId, int $userId): bool
     {
         $stmt = $this->db->prepare(
@@ -73,9 +68,9 @@ class Club
         return (int)$stmt->fetchColumn() > 0;
     }
 
-    /**
-     * Create a new book club.
-     */
+    
+     // Create a new book club.
+     
     public function create(array $data): bool 
     {
         $stmt = $this->db->prepare(
@@ -85,9 +80,9 @@ class Club
         return $stmt->execute($data);
     }
 
-    /**
-     * Add a user to a club.
-     */
+    
+     // Add a user to a club.
+     
     public function addMember(int $clubId, int $userId): bool
     {
         $stmt = $this->db->prepare(
@@ -97,9 +92,9 @@ class Club
         return $stmt->execute([':club_id' => $clubId, ':user_id' => $userId]);
     }
 
-    /**
-     * Get all pending join requests.
-     */
+    
+     // Get all pending join requests.
+     
     public function getPendingRequests(int $clubId): array
     {
         $stmt = $this->db->prepare(
@@ -120,9 +115,9 @@ class Club
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Update join request status.
-     */
+    
+     // Update join request status.
+     
     public function updateJoinRequest(int $requestId, string $status): bool
     {
         $stmt = $this->db->prepare(
@@ -131,13 +126,9 @@ class Club
         return $stmt->execute([':status' => $status, ':id' => $requestId]);
     }
 
-    /**
-     * Delete a previous join request (Required for re-submitting after rejection).
-     * Fixes: Fatal error: Call to undefined method Club::deleteJoinRequest()
-     */
-/**
-     * Delete a previous join request (used if a user was rejected and wants to retry).
-     */
+
+     // Delete a previous join request (used if a user was rejected and wants to retry).
+     
     public function deleteJoinRequest(int $clubId, int $userId): bool
     {
         $stmt = $this->db->prepare(
@@ -146,9 +137,9 @@ class Club
         return $stmt->execute([':cid' => $clubId, ':uid' => $userId]);
     }
 
-    /**
-     * Get club members list.
-     */
+    
+     // Get club members list.
+     
     public function getMembers(int $clubId): array
     {
         $stmt = $this->db->prepare(
@@ -159,9 +150,8 @@ class Club
         $stmt->execute([':cid' => $clubId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    /**
- * جلب النوادي التي انضم إليها المستخدم فقط
- */
+  
+    //show specific user clubs only 
 public function getJoinedClubs($userId) {
     $sql = "SELECT c.* FROM clubs c 
             INNER JOIN club_members cm ON c.id = cm.club_id 
