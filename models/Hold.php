@@ -1,11 +1,5 @@
 <?php
-/*
- * app/models/Hold.php
- * --------------------
- * Handles digital holds-on-shelf (F8).
- * A hold reserves a book for 24 hours without payment.
- * The book's stock_qty is decremented while the hold is active.
- */
+
 
 class Hold
 {
@@ -16,13 +10,9 @@ class Hold
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Check if a user has an unexpired active hold on a specific book.
-     *
-     * @param int $userId
-     * @param int $bookId
-     * @return array|false  The hold row, or false if none
-     */
+    
+     // Check if a user has an unexpired active hold on a specific book.
+ 
     public function getActiveHold(int $userId, int $bookId)
     {
         $stmt = $this->db->prepare(
@@ -33,12 +23,9 @@ class Hold
         return $stmt->fetch();
     }
 
-    /**
-     * Get all active holds for a specific user, with book details.
-     *
-     * @param int $userId
-     * @return array
-     */
+    
+     // Get all active holds for a specific user, with book details.
+     
     public function getByUser(int $userId): array
     {
         $stmt = $this->db->prepare(
@@ -51,13 +38,9 @@ class Hold
         return $stmt->fetchAll();
     }
 
-    /**
-     * Create a new 24-hour hold on a book for a user.
-     *
-     * @param int $userId
-     * @param int $bookId
-     * @return bool
-     */
+    
+     //Create a new 24-hour hold on a book for a user.
+   
     public function create(int $userId, int $bookId): bool
     {
         $stmt = $this->db->prepare(
@@ -67,12 +50,9 @@ class Hold
         return $stmt->execute([':uid' => $userId, ':bid' => $bookId]);
     }
 
-    /**
-     * Delete a hold (e.g., when user converts hold to order).
-     *
-     * @param int $id  Hold ID
-     * @return bool
-     */
+    
+     // Delete a hold ( when user converts hold to order).
+     
     public function delete(int $id): bool
     {
         $stmt = $this->db->prepare("DELETE FROM holds WHERE id = :id");
