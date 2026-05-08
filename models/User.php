@@ -1,11 +1,4 @@
 <?php
-/*
- * app/models/User.php
- * --------------------
- * Handles all database operations for the 'users' table.
- * Each method performs one specific query — nothing more.
- * Passwords are NEVER stored here — always hashed before calling create().
- */
 
 class User
 {
@@ -13,15 +6,13 @@ class User
 
     public function __construct()
     {
-        // Get the shared singleton database connection
+        
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Get all users, newest first.
-     *
-     * @return array
-     */
+    
+     //Get all users, newest first.
+   
     public function getAll(): array
     {
         $stmt = $this->db->prepare("SELECT id, name, email, role, privacy, loyalty_points, created_at FROM users ORDER BY id DESC");
@@ -29,12 +20,9 @@ class User
         return $stmt->fetchAll();
     }
 
-    /**
-     * Find a single user by their primary key.
-     *
-     * @param int $id
-     * @return array|false
-     */
+    
+     // Find a single user by their primary key.
+     
     public function getById(int $id)
     {
         $stmt = $this->db->prepare("SELECT * FROM users WHERE id = :id");
@@ -42,28 +30,19 @@ class User
         return $stmt->fetch();
     }
 
-    /**
-     * Find a user by their email address. Used during login.
-     *
-     * @param string $email
-     * @return array|false
-     */
-  // app/models/User.php
+    
+     // Find a user by their email address. Used during login.
 
-public function getByEmail(string $email)
-{
-    $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email");
-    $stmt->execute([':email' => $email]);
-    return $stmt->fetch(PDO::FETCH_ASSOC); // تأكدي من وجود FETCH_ASSOC
-}
+        public function getByEmail(string $email)
+        {
+            $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email");
+            $stmt->execute([':email' => $email]);
+            return $stmt->fetch(PDO::FETCH_ASSOC); 
+        }
 
-    /**
-     * Insert a new user record into the database.
-     *
-     * @param array $data  Keys: name, email, password_hash, role
-     * @return bool
-     */
-// app/models/User.php
+    
+     // Insert a new user record into the database.
+    
         public function create(array $data): bool
         {
             $stmt = $this->db->prepare(
@@ -72,39 +51,26 @@ public function getByEmail(string $email)
             );
             return $stmt->execute($data);
         }
-    /**
-     * Update a user's role (used by admin).
-     *
-     * @param int    $id    User ID
-     * @param string $role  New role value
-     * @return bool
-     */
+    
+     // Update a user's role (used by admin).
+    
     public function updateRole(int $id, string $role): bool
     {
         $stmt = $this->db->prepare("UPDATE users SET role = :role WHERE id = :id");
         return $stmt->execute([':role' => $role, ':id' => $id]);
     }
 
-    /**
-     * Update privacy setting for a user ('PUBLIC' or 'PRIVATE').
-     *
-     * @param int    $id
-     * @param string $privacy
-     * @return bool
-     */
+    
+     //Update privacy setting for a user ('PUBLIC' or 'PRIVATE').
+    
     public function updatePrivacy(int $id, string $privacy): bool
     {
         $stmt = $this->db->prepare("UPDATE users SET privacy = :privacy WHERE id = :id");
         return $stmt->execute([':privacy' => $privacy, ':id' => $id]);
     }
 
-    /**
-     * Anonymize a user's personal data (GDPR delete request).
-     * We do NOT delete the row to preserve referential integrity.
-     *
-     * @param int $id
-     * @return bool
-     */
+    
+     // Anonymize a user's personal data (GDPR delete request).
     public function anonymize(int $id): bool
     {
         $stmt = $this->db->prepare(
@@ -118,12 +84,9 @@ public function getByEmail(string $email)
         return $stmt->execute([':id' => $id]);
     }
 
-    /**
-     * Search users by name or email (admin panel).
-     *
-     * @param string $query
-     * @return array
-     */
+    
+     // Search users by name or email (admin panel).
+     
     public function search(string $query): array
     {
         $stmt = $this->db->prepare(
@@ -135,11 +98,9 @@ public function getByEmail(string $email)
         return $stmt->fetchAll();
     }
 
-    /**
-     * Count total registered users.
-     *
-     * @return int
-     */
+    
+     // Count total registered users.
+     
     public function count(): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM users");
