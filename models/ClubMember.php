@@ -1,11 +1,5 @@
 <?php
-/*
- * app/models/ClubMember.php
- * --------------------------
- * Thin model for the club_members join table.
- * The main Club model handles most membership logic.
- * This model adds helpers for role management within a club.
- */
+
 
 class ClubMember
 {
@@ -16,13 +10,9 @@ class ClubMember
         $this->db = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Get a single membership record for a user in a club.
-     *
-     * @param int $clubId
-     * @param int $userId
-     * @return array|false
-     */
+    
+     // Get a single membership record for a user in a club.
+
     public function get(int $clubId, int $userId)
     {
         $stmt = $this->db->prepare(
@@ -32,13 +22,9 @@ class ClubMember
         return $stmt->fetch();
     }
 
-    /**
-     * Remove a user from a club.
-     *
-     * @param int $clubId
-     * @param int $userId
-     * @return bool
-     */
+    
+     // Remove a user from a club.
+    
     public function remove(int $clubId, int $userId): bool
     {
         $stmt = $this->db->prepare(
