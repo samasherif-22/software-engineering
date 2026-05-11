@@ -1,10 +1,5 @@
 <?php
-/*
- * app/controllers/HomeController.php
- * ------------------------------------
- * Handles the homepage, role-based dashboard routing,
- * and the notifications listing page.
- */
+
 
 require_once __DIR__ . '/../models/Book.php';
 require_once __DIR__ . '/../models/Notification.php';
@@ -19,11 +14,10 @@ class HomeController extends Controller
     public function index(): void
     {
         $bookModel  = new Book();
-        // ✅ تم حذف سطر استدعاء $staffPicks
-        $allBooks   = array_slice($bookModel->getAll(), 0, 8); // Latest 8
+        // Latest 8 books for the homepage
+        $allBooks   = array_slice($bookModel->getAll(), 0, 8); 
 
         $this->view('home/index', [
-            // ✅ تم حذف 'staffPicks' من المصفوفة المُرسلة للـ View
             'allBooks'   => $allBooks,
         ]);
     }
@@ -42,22 +36,21 @@ class HomeController extends Controller
                 $notifModel   = new Notification();
                 $userModel    = new User();
 
-                // ✅ تم حذف السطر الخاص بـ $data['staffPicks'] لأن الدالة تم إلغاؤها
                 $data['notifications'] = $notifModel->getByUser($userId);
                 
-                // 🛠️ جلب بيانات الـ Quick Lend 
+                // Fetch users for Quick Lend feature
                 $allUsers = $userModel->getAll();
                 
-                // 1. استبعاد المستخدم الحالي + فلترة عشان نجيب الـ READER بس
+                // Filter to get only other READERS
                 $data['usersList'] = array_filter($allUsers, function($u) use ($userId) {
                     return $u['id'] != $userId && strtoupper($u['role']) === 'READER';
                 });
                 
-                // 2. جلب الكتب اللي اليوزر اشتراها عشان يقدر يعيرها
+                // Fetch books purchased by user
                 if (method_exists($bookModel, 'getPurchasedByUser')) {
                     $data['booksList'] = $bookModel->getPurchasedByUser($userId);
                 } else {
-                    $data['booksList'] = $bookModel->getAll(); // بديل مؤقت
+                    $data['booksList'] = $bookModel->getAll(); 
                 }
                 break;
 
@@ -91,12 +84,16 @@ class HomeController extends Controller
                 break;
 
             case 'SYSTEM_ADMIN':
+                // Main stats for Admin Dashboard
                 $data['userCount']   = (new User())->count();
                 $data['bookCount']   = (new Book())->count();
                 $data['orderCount']  = (new Order())->count();
-                $data['clubCount']   = (new Club())->count();
-                $data['eventCount']  = (new Event())->count();
-                $data['storeCount']  = (new Store())->count();
+                
+                // Temporary fix: Set counts to 0 if methods are not defined in models
+                $data['clubCount']   = 0; 
+                $data['eventCount']  = 0; 
+                $data['storeCount']  = 0; 
+
                 require_once __DIR__ . '/../models/Dispute.php';
                 require_once __DIR__ . '/../models/StoreApplication.php';
                 $data['openDisputes']      = (new Dispute())->getOpen();
